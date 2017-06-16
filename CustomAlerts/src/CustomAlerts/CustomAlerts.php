@@ -11,15 +11,16 @@
 
 namespace CustomAlerts;
 
-use pocketmine\command\CommandExecutor;
-use pocketmine\command\CommandSender;
+use CustomAlerts\Commands\Commands;
 use pocketmine\entity\Living;
 use pocketmine\event\entity\EntityDamageByBlockEvent;
+use pocketmine\event\entity\EntityDamageByChildEntityEvent;
+use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
+use pocketmine\event\entity\EntityDeathEvent;
 use pocketmine\level\Level;
 use pocketmine\Player;
 use pocketmine\plugin\PluginBase;
-use pocketmine\Server;
 use pocketmine\utils\Config;
 use pocketmine\utils\TextFormat;
 
@@ -72,6 +73,9 @@ class CustomAlerts extends PluginBase {
 	
 	/** @var CustomAlerts $instance Plugin instance */
 	private static $instance = null;
+
+	/** @var Config $cfg Config instance */
+	private $cfg;
 	
 	/**
 	 * Get CustomAlerts API
@@ -91,7 +95,7 @@ class CustomAlerts extends PluginBase {
 	/**
 	 * Translate Minecraft colors
 	 *
-	 * @param char $symbol Color symbol
+	 * @param string $symbol Color symbol
 	 * @param string $message The message to be translated
 	 *
 	 * @return string The translated message
@@ -129,7 +133,7 @@ class CustomAlerts extends PluginBase {
     	@mkdir($this->getDataFolder());
     	$this->saveDefaultConfig();
     	$this->cfg = $this->getConfig()->getAll();
-    	$this->getCommand("customalerts")->setExecutor(new Commands\Commands($this));
+    	$this->getServer()->getCommandMap()->register("customalerts", new Commands($this));
     	$this->getServer()->getPluginManager()->registerEvents(new EventListener($this), $this);
     	$this->getServer()->getScheduler()->scheduleRepeatingTask(new MotdTask($this), 20);
     }
@@ -155,29 +159,6 @@ class CustomAlerts extends PluginBase {
      */
     public function getAPIVersion(){
     	return CustomAlerts::API_VERSION;
-    }
-    
-    /**
-     * @deprecated
-     * Register Plugin as CustomAlerts Extension
-     * 
-     * @param PluginBase $extension The Plugin to register as extension
-     * @param int $priority (optional)
-     */
-    public function registerExtension(PluginBase $extension, $priority = null){
-    	Server::getInstance()->getLogger()->warning("This function has been deprecated since CustomAlerts API v1.1");
-    }
-    
-    /**
-     * @deprecated
-     * Get all CustomAlerts loaded extensions
-     * 
-     * @param int $priority (optional)
-     * 
-     * @return array All CustomAlerts loaded extensions if no priority specified, otherwise returns all extesions with the specified priority
-     */
-    public function getAllExtensions($priority = null){
-    	Server::getInstance()->getLogger()->warning("This function has been deprecated since CustomAlerts API v1.1");
     }
     
     /**
@@ -232,9 +213,11 @@ class CustomAlerts extends PluginBase {
     	$cfg = $this->getConfig()->getAll();
     	return $cfg["OutdatedClient"]["custom"];
     }
-    
+
     /**
      * Get default outdated client message
+     *
+     * @param Player $player
      *
      * @return string The default outdated client message
      */
@@ -279,6 +262,8 @@ class CustomAlerts extends PluginBase {
     /**
      * Get default outdated server message
      *
+	 * @param Player $player
+	 *
      * @return string The default outdated server message
      */
     public function getDefaultOutdatedServerMessage(Player $player){
@@ -322,6 +307,8 @@ class CustomAlerts extends PluginBase {
     /**
      * Get default whitelist message
      *
+	 * @param Player $player
+	 *
      * @return string The default whitelist message
      */
     public function getDefaultWhitelistMessage(Player $player){
@@ -365,6 +352,8 @@ class CustomAlerts extends PluginBase {
     /**
      * Get default full server message
      *
+	 * @param Player $player
+	 *
      * @return string The default full server message
      */
     public function getDefaultFullServerMessage(Player $player){
@@ -689,6 +678,7 @@ class CustomAlerts extends PluginBase {
         			$message = str_replace("{BLOCK}", "Unknown", $message);
         		}
         	}elseif($cause->getCause() == EntityDamageEvent::CAUSE_ENTITY_ATTACK){
+        	    /** @var EntityDamageByEntityEvent $cause */
         		$message = $cfg["Death"]["kill-message"]["message"];
         	    $killer = $cause->getDamager();
         		if($killer instanceof Living){
@@ -698,6 +688,7 @@ class CustomAlerts extends PluginBase {
         		}
         	}elseif($cause->getCause() == EntityDamageEvent::CAUSE_PROJECTILE){
         		$message = $cfg["Death"]["death-projectile-message"]["message"];
+        		/** @var EntityDamageByChildEntityEvent $cause */
         		$killer = $cause->getDamager();
         		if($killer instanceof Living){
         			$message = str_replace("{KILLER}", $killer->getName(), $message);
@@ -756,4 +747,3 @@ class CustomAlerts extends PluginBase {
     }
 
 }
-?>

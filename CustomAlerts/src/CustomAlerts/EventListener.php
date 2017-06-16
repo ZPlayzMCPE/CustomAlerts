@@ -11,17 +11,16 @@
 
 namespace CustomAlerts;
 
-use pocketmine\event\entity\EntityDeathEvent;
 use pocketmine\event\entity\EntityLevelChangeEvent;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerDeathEvent;
-use pocketmine\event\player\PlayerEvent;
 use pocketmine\event\player\PlayerJoinEvent;
 use pocketmine\event\player\PlayerPreLoginEvent;
 use pocketmine\event\player\PlayerQuitEvent;
 use pocketmine\event\server\DataPacketReceiveEvent;
-use pocketmine\network\protocol\DataPacket;
-use pocketmine\network\protocol\Info;
+use pocketmine\network\mcpe\protocol\DataPacket;
+use pocketmine\network\mcpe\protocol\LoginPacket;
+use pocketmine\network\mcpe\protocol\ProtocolInfo as Info;
 use pocketmine\Player;
 use pocketmine\Server;
 
@@ -36,38 +35,45 @@ use CustomAlerts\Events\CustomAlertsWhitelistKickEvent;
 use CustomAlerts\Events\CustomAlertsWorldChangeEvent;
 
 class EventListener implements Listener {
-	
+	/** @var CustomAlerts $plugin */
+	private $plugin;
+
 	public function __construct(CustomAlerts $plugin){
         $this->plugin = $plugin;
     }
     
     public function onReceivePacket(DataPacketReceiveEvent $event){
+		if($this->plugin->isOutdatedClientMessageCustom() and $this->plugin->isOutdatedServerMessageCustom()) {
+			return;
+		}
     	$player = $event->getPlayer();
+    	/** @var DataPacket $packet */
     	$packet = $event->getPacket();
     	if($packet->pid() == Info::LOGIN_PACKET){
+    		/** @var LoginPacket $packet */
     		if($packet->protocol < Info::CURRENT_PROTOCOL){
     			//Check if outdated client message is custom
-    			if(CustomAlerts::getAPI()->isOutdatedClientMessageCustom()){
-    				CustomAlerts::getAPI()->setOutdatedClientMessage(CustomAlerts::getAPI()->getDefaultOutdatedClientMessage($player));
+    			if($this->plugin->isOutdatedClientMessageCustom()){
+    				$this->plugin->setOutdatedClientMessage($this->plugin->getDefaultOutdatedClientMessage($player));
     			}
     			//Outdated Client Kick Event
-    			$this->plugin->getServer()->getPluginManager()->callEvent(new CustomAlertsOutdatedClientKickEvent($player));
+    			$this->plugin->getServer()->getPluginManager()->callEvent(new CustomAlertsOutdatedClientKickEvent($player, $this->plugin));
     			//Check if Outdated Client message is not empty
-    			if(CustomAlerts::getAPI()->getOutdatedClientMessage() != null){
-    				$player->close("", CustomAlerts::getAPI()->getOutdatedClientMessage());
-    				$event->setCancelled(true);
+    			if($this->plugin->getOutdatedClientMessage() != null){
+    				$player->close("", $this->plugin->getOutdatedClientMessage());
+    				$event->setCancelled();
     			}
     		}elseif($packet->protocol > Info::CURRENT_PROTOCOL){
     			//Check if outdated server message is custom
-    			if(CustomAlerts::getAPI()->isOutdatedServerMessageCustom()){
-    				CustomAlerts::getAPI()->setOutdatedServerMessage(CustomAlerts::getAPI()->getDefaultOutdatedServerMessage($player));
+    			if($this->plugin->isOutdatedServerMessageCustom()){
+    				$this->plugin->setOutdatedServerMessage($this->plugin->getDefaultOutdatedServerMessage($player));
     			}
     			//Outdated Server Kick Event
-    			$this->plugin->getServer()->getPluginManager()->callEvent(new CustomAlertsOutdatedServerKickEvent($player));
+    			$this->plugin->getServer()->getPluginManager()->callEvent(new CustomAlertsOutdatedServerKickEvent($player, $this->plugin));
     			//Check if Outdated Server message is not empty
-    			if(CustomAlerts::getAPI()->getOutdatedServerMessage() != null){
-    				$player->close("", CustomAlerts::getAPI()->getOutdatedServerMessage());
-    				$event->setCancelled(true);
+    			if($this->plugin->getOutdatedServerMessage() != null){
+    				$player->close("", $this->plugin->getOutdatedServerMessage());
+    				$event->setCancelled();
     			}
     		}
     	}
@@ -83,28 +89,28 @@ class EventListener implements Listener {
     	if(count($this->plugin->getServer()->getOnlinePlayers()) - 1 < $this->plugin->getServer()->getMaxPlayers()){
     		if(!$this->plugin->getServer()->isWhitelisted($event->getPlayer()->getName())){
     			//Check if Whitelist message is custom
-    			if(CustomAlerts::getAPI()->isWhitelistMessageCustom()){
-    				CustomAlerts::getAPI()->setWhitelistMessage(CustomAlerts::getAPI()->getDefaultWhitelistMessage($player));
+    			if($this->plugin->isWhitelistMessageCustom()){
+    				$this->plugin->setWhitelistMessage($this->plugin->getDefaultWhitelistMessage($player));
     			}
     			//Whitelist Kick Event
-    			$this->plugin->getServer()->getPluginManager()->callEvent(new CustomAlertsWhitelistKickEvent($player));
+    			$this->plugin->getServer()->getPluginManager()->callEvent(new CustomAlertsWhitelistKickEvent($player, $this->plugin));
     			//Check if Whitelist message is not empty
-    			if(CustomAlerts::getAPI()->getWhitelistMessage() != null){
-    				$player->close("", CustomAlerts::getAPI()->getWhitelistMessage());
-    				$event->setCancelled(true);
+    			if($this->plugin->getWhitelistMessage() != null){
+    				$player->close("", $this->plugin->getWhitelistMessage());
+    				$event->setCancelled();
     			}
     		}
     	}else{
     		//Check if Full Server message is custom
-    		if(CustomAlerts::getAPI()->isFullServerMessageCustom()){
-    			CustomAlerts::getAPI()->setFullServerMessage(CustomAlerts::getAPI()->getDefaultFullServerMessage($player));
+    		if($this->plugin->isFullServerMessageCustom()){
+    			$this->plugin->setFullServerMessage($this->plugin->getDefaultFullServerMessage($player));
     		}
     		//Full Server Kick Event
-    		$this->plugin->getServer()->getPluginManager()->callEvent(new CustomAlertsFullServerKickEvent($player));
+    		$this->plugin->getServer()->getPluginManager()->callEvent(new CustomAlertsFullServerKickEvent($player, $this->plugin));
     		//Check if Full Server message is not empty
-    		if(CustomAlerts::getAPI()->getFullServerMessage() != null){
-    			$player->close("", CustomAlerts::getAPI()->getFullServerMessage());
-    			$event->setCancelled(true);
+    		if($this->plugin->getFullServerMessage() != null){
+    			$player->close("", $this->plugin->getFullServerMessage());
+    			$event->setCancelled();
     		}
     	}
     }
@@ -112,46 +118,46 @@ class EventListener implements Listener {
     /**
      * @param PlayerJoinEvent $event
      *
-     * @priority HIGHEST
+     * @priority MONITOR
      */
     public function onPlayerJoin(PlayerJoinEvent $event){
     	$player = $event->getPlayer();
     	//Motd Update
     	//Check if Motd message is custom
-    	if(CustomAlerts::getAPI()->isMotdCustom()){
-    		CustomAlerts::getAPI()->setMotdMessage(CustomAlerts::getAPI()->getDefaultMotdMessage());
+    	if($this->plugin->isMotdCustom()){
+    		$this->plugin->setMotdMessage($this->plugin->getDefaultMotdMessage());
     	}else{
-    		CustomAlerts::getAPI()->setMotdMessage($this->plugin->translateColors("&", $this->plugin->getServer()->getMotd()));
+    		$this->plugin->setMotdMessage($this->plugin->translateColors("&", $this->plugin->getServer()->getMotd()));
     	}
     	//Motd Update Event
-    	$this->plugin->getServer()->getPluginManager()->callEvent(new CustomAlertsMotdUpdateEvent($this->plugin->getServer()->getMotd()));
-    	$this->plugin->getServer()->getNetwork()->setName(CustomAlerts::getAPI()->getMotdMessage());
+    	$this->plugin->getServer()->getPluginManager()->callEvent(new CustomAlertsMotdUpdateEvent($this->plugin->getServer()->getMotd(), $this->plugin));
+    	$this->plugin->getServer()->getNetwork()->setName($this->plugin->getMotdMessage());
     	//Join Message
     	$status = 0;
-    	CustomAlerts::getAPI()->setJoinMessage($event->getJoinMessage());
+    	$this->plugin->setJoinMessage($event->getJoinMessage());
     	//Get First Join
     	if(!$player->hasPlayedBefore()){
     		//Check if FirstJoin message is enabled
-    		if(CustomAlerts::getAPI()->isDefaultFirstJoinMessageEnabled()){
-    			CustomAlerts::getAPI()->setJoinMessage(CustomAlerts::getAPI()->getDefaultFirstJoinMessage($player));
+    		if($this->plugin->isDefaultFirstJoinMessageEnabled()){
+    			$this->plugin->setJoinMessage($this->plugin->getDefaultFirstJoinMessage($player));
     			$status = 1;
     		}
     	}
     	//Default Join Message
     	if($status == 0){
     		//Check if Join message is hidden
-    		if(CustomAlerts::getAPI()->isDefaultJoinMessageHidden()){
-    			CustomAlerts::getAPI()->setJoinMessage("");
+    		if($this->plugin->isDefaultJoinMessageHidden()){
+    			$this->plugin->setJoinMessage("");
     		}else{
     			//Check if Join message is custom
-    			if(CustomAlerts::getAPI()->isDefaultJoinMessageCustom()){
-    				CustomAlerts::getAPI()->setJoinMessage(CustomAlerts::getAPI()->getDefaultJoinMessage($player));
+    			if($this->plugin->isDefaultJoinMessageCustom()){
+    				$this->plugin->setJoinMessage($this->plugin->getDefaultJoinMessage($player));
     			}
     		}
     	}
     	//Join Event
-    	$this->plugin->getServer()->getPluginManager()->callEvent(new CustomAlertsJoinEvent($player, $event->getJoinMessage()));
-    	$event->setJoinMessage(CustomAlerts::getAPI()->getJoinMessage());
+    	$this->plugin->getServer()->getPluginManager()->callEvent(new CustomAlertsJoinEvent($player, $event->getJoinMessage(), $this->plugin));
+    	$event->setJoinMessage($this->plugin->getJoinMessage());
     }
     
     /**
@@ -162,45 +168,50 @@ class EventListener implements Listener {
     public function onPlayerQuit(PlayerQuitEvent $event){
     	 $player = $event->getPlayer();
     	 //Motd Update
-    	 if(CustomAlerts::getAPI()->isMotdCustom()){
-    	 	CustomAlerts::getAPI()->setMotdMessage(CustomAlerts::getAPI()->getDefaultMotdMessage());
+    	 if($this->plugin->isMotdCustom()){
+    	 	$this->plugin->setMotdMessage($this->plugin->getDefaultMotdMessage());
     	 }else{
-    	 	CustomAlerts::getAPI()->setMotdMessage($this->plugin->translateColors("&", $this->plugin->getServer()->getMotd()));
+    	 	$this->plugin->setMotdMessage($this->plugin->translateColors("&", $this->plugin->getServer()->getMotd()));
     	 }
     	 //Motd Update Event
-    	 $this->plugin->getServer()->getPluginManager()->callEvent(new CustomAlertsMotdUpdateEvent($this->plugin->getServer()->getMotd()));
-    	 $this->plugin->getServer()->getNetwork()->setName(CustomAlerts::getAPI()->getMotdMessage());
-    	 CustomAlerts::getAPI()->setQuitMessage($event->getQuitMessage());
+    	 $this->plugin->getServer()->getPluginManager()->callEvent(new CustomAlertsMotdUpdateEvent($this->plugin->getServer()->getMotd(), $this->plugin));
+    	 $this->plugin->getServer()->getNetwork()->setName($this->plugin->getMotdMessage());
+    	 $this->plugin->setQuitMessage($event->getQuitMessage());
     	 //Check if Quit message is hidden
-    	 if(CustomAlerts::getAPI()->isQuitHidden()){
-    	 	CustomAlerts::getAPI()->setQuitMessage("");
+    	 if($this->plugin->isQuitHidden()){
+    	 	$this->plugin->setQuitMessage("");
     	 }else{
     	 	//Check if Quit message is custom
-    	 	if(CustomAlerts::getAPI()->isQuitCustom()){
-    	 		CustomAlerts::getAPI()->setQuitMessage(CustomAlerts::getAPI()->getDefaultQuitMessage($player));
+    	 	if($this->plugin->isQuitCustom()){
+    	 		$this->plugin->setQuitMessage($this->plugin->getDefaultQuitMessage($player));
     	 	}
     	 }
     	 //Quit Event
-    	 $this->plugin->getServer()->getPluginManager()->callEvent(new CustomAlertsQuitEvent($player, $event->getQuitMessage()));
-    	 $event->setQuitMessage(CustomAlerts::getAPI()->getQuitMessage());
+    	 $this->plugin->getServer()->getPluginManager()->callEvent(new CustomAlertsQuitEvent($player, $event->getQuitMessage(), $this->plugin));
+    	 $event->setQuitMessage($this->plugin->getQuitMessage());
     }
-    
+
+    /**
+     * @param EntityLevelChangeEvent $event
+	 * 
+	 * @priority MONITOR
+     */
     public function onWorldChange(EntityLevelChangeEvent $event){
     	$entity = $event->getEntity();
-    	CustomAlerts::getAPI()->setWorldChangeMessage("");
+    	$this->plugin->setWorldChangeMessage("");
     	//Check if the Entity is a Player
     	if($entity instanceof Player){
     		$player = $entity;
     		$origin = $event->getOrigin();
     		$target = $event->getTarget();
     		//Check if Default WorldChange Message is enabled
-    		if(CustomAlerts::getAPI()->isDefaultWorldChangeMessageEnabled()){
-    			CustomAlerts::getAPI()->setWorldChangeMessage(CustomAlerts::getAPI()->getDefaultWorldChangeMessage($player, $origin, $target));
+    		if($this->plugin->isDefaultWorldChangeMessageEnabled()){
+    			$this->plugin->setWorldChangeMessage($this->plugin->getDefaultWorldChangeMessage($player, $origin, $target));
     		}
     	    //WorldChange Event
-    	    $this->plugin->getServer()->getPluginManager()->callEvent(new CustomAlertsWorldChangeEvent($player, $origin, $target));
-    		if(CustomAlerts::getAPI()->getWorldChangeMessage() != ""){
-    			Server::getInstance()->broadcastMessage(CustomAlerts::getAPI()->getWorldChangeMessage());
+    	    $this->plugin->getServer()->getPluginManager()->callEvent(new CustomAlertsWorldChangeEvent($player, $origin, $target, $this->plugin));
+    		if($this->plugin->getWorldChangeMessage() != ""){
+    			Server::getInstance()->broadcastMessage($this->plugin->getWorldChangeMessage());
     		}
     	}
     }
@@ -209,26 +220,24 @@ class EventListener implements Listener {
     /**
      * @param PlayerDeathEvent $event
      *
-     * @priority HIGHEST
+     * @priority MONITOR
      */
     public function onPlayerDeath(PlayerDeathEvent $event){
     	$player = $event->getEntity();
-    	CustomAlerts::getAPI()->setDeathMessage($event->getDeathMessage());
+    	$this->plugin->setDeathMessage($event->getDeathMessage());
     	if($player instanceof Player){
     		$cause = $player->getLastDamageCause();
-    		if(CustomAlerts::getAPI()->isDeathHidden($cause)){
-    			CustomAlerts::getAPI()->setDeathMessage("");
+    		if($this->plugin->isDeathHidden($cause)){
+    			$this->plugin->setDeathMessage("");
     		}else{
     			//Check if Death message is custom
-    			if(CustomAlerts::getAPI()->isDeathCustom($cause)){
-    				CustomAlerts::getAPI()->setDeathMessage(CustomAlerts::getAPI()->getDefaultDeathMessage($player, $cause));
+    			if($this->plugin->isDeathCustom($cause)){
+    				$this->plugin->setDeathMessage($this->plugin->getDefaultDeathMessage($player, $cause));
     			}
     		}
             //Death Event
-    	    $this->plugin->getServer()->getPluginManager()->callEvent(new CustomAlertsDeathEvent($player, $cause));
-    		$event->setDeathMessage(CustomAlerts::getAPI()->getDeathMessage());
+    	    $this->plugin->getServer()->getPluginManager()->callEvent(new CustomAlertsDeathEvent($player, $cause, $this->plugin));
+    		$event->setDeathMessage($this->plugin->getDeathMessage());
     	}
     }
-	
 }
-?>

@@ -1,21 +1,22 @@
 name: CustomAlerts
 main: CustomAlerts\CustomAlerts
-version: "1.6"
-api: [1.14.0]
+version: 1.7.2
+api:
+- 3.0.0-ALPHA5
 load: STARTUP
 author: EvolSoft
-description: Customize alerts (join/leave messages, etc...)
-website: http://www.evolsoft.tk
+description: "Customize alerts (join/leave messages, etc...)"
+website: "http://www.evolsoft.tk"
 
 commands:
   customalerts:
-    aliases: [calerts]
-    description: CustomAlerts Commands.
+    aliases: ["calerts","ca"]
+    description: CustomAlerts Master Command
     permission: customalerts
 permissions:
   customalerts:
     default: op
-    description: CustomAlerts permissions.
+    description: CustomAlerts Master Permission
     children:
       customalerts.help:
         default: op
