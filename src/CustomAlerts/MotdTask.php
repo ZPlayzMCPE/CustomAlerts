@@ -24,7 +24,7 @@ class MotdTask extends PluginTask {
         $this->counter = 0;
     }
     
-    public function onRun(int $tick){
+    public function onRun(int $ticks){
     	$cfg = $this->getOwner()->getConfig()->getAll();
     	$this->counter += 1;
     	if($this->counter >= $cfg["Motd"]["update-timeout"]){
