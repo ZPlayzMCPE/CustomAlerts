@@ -32,7 +32,7 @@ class CustomAlerts extends PluginBase {
 	const PRODUCER = "EvolSoft";
 	
 	/** @var string VERSION Plugin version */
-	const VERSION = "1.7";
+	const VERSION = "1.7.2";
 	
 	/** @var string MAIN_WEBSITE Plugin producer website */
 	const MAIN_WEBSITE = "http://www.evolsoft.tk";
@@ -141,7 +141,7 @@ class CustomAlerts extends PluginBase {
     //API Functions
     
     /** @var string API_VERSION CustomAlerts API version */
-    const API_VERSION = "3.0.0-ALPHA6";
+    const API_VERSION = "3.0.0-ALPHA9";
     
     /**
      * Get CustomAlerts version
@@ -335,7 +335,7 @@ class CustomAlerts extends PluginBase {
      *
      * @param string $message The message
      */
-    public function setWhitelistMessage($message){
+    public function setWhitelistMessage(string $message){
     	$this->message_whitelist = $message;
     }
     
